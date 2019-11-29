@@ -4365,21 +4365,15 @@ seaf_get_group_repos_by_user (SeafRepoManager *mgr,
     GList *groups = NULL, *p, *q;
     GList *repos = NULL;
     SeafileRepo *repo = NULL;
-    SearpcClient *rpc_client = NULL;
     GString *sql = NULL;
     int group_id = 0;
 
-    rpc_client = create_ccnet_rpc_client ();
-    if (!rpc_client)
-        return NULL;
-
     /* Get the groups this user belongs to. */
-    groups = ccnet_get_groups_by_user (rpc_client, user, 1);
+    groups = ccnet_group_manager_get_groups_by_user (seaf->group_mgr, user,
+                                                     1, NULL);
     if (!groups) {
-        release_ccnet_rpc_client (rpc_client);
         goto out;
     }
-    release_ccnet_rpc_client (rpc_client);
 
     sql = g_string_new ("");
     g_string_printf (sql, "SELECT g.repo_id, v.repo_id, "
@@ -4545,7 +4539,6 @@ seaf_repo_manager_convert_repo_path (SeafRepoManager *mgr,
     int rc;
     int group_id;
     GString *sql;
-    SearpcClient *rpc_client = NULL;
     CcnetGroup *group;
     GList *groups = NULL, *p1;
     GList *repo_paths = NULL;
@@ -4582,15 +4575,11 @@ seaf_repo_manager_convert_repo_path (SeafRepoManager *mgr,
 
     /* Get the groups this user belongs to. */
 
-    rpc_client = create_ccnet_rpc_client ();
-    if (!rpc_client)
-        goto out;
-    groups = ccnet_get_groups_by_user (rpc_client, user, 1);
+    groups = ccnet_group_manager_get_groups_by_user (seaf->group_mgr, user,
+                                                     1, NULL);
     if (!groups) {
-        release_ccnet_rpc_client (rpc_client);
         goto out;
     }
-    release_ccnet_rpc_client (rpc_client);
 
     g_string_printf (sql, "SELECT v.repo_id, path, r.group_id FROM VirtualRepo v, %s r WHERE "
                      "v.origin_repo=? AND v.repo_id=r.repo_id AND r.group_id IN(",

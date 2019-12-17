@@ -18,14 +18,14 @@ import termcolor
 
 from serverctl import ServerCtl
 from utils import (
-    cd, chdir, debug, green, info, lru_cache, mkdirs, on_travis, red,
+    cd, chdir, debug, green, info, lru_cache, mkdirs, on_github_actions, red,
     setup_logging, shell, warning
 )
 
 logger = logging.getLogger(__name__)
 
 TOPDIR = abspath(join(os.getcwd(), '..'))
-if on_travis():
+if on_github_actions():
     PREFIX = expanduser('~/opt/local')
 else:
     PREFIX = os.environ.get('SEAFILE_INSTALL_PREFIX', '/usr/local')
@@ -157,20 +157,43 @@ class SeafileServer(Project):
     def __init__(self):
         super(SeafileServer, self).__init__('seafile-server')
 
+    @property
+    def projectdir(self):
+        return join(TOPDIR, 'seafile-server')
+
+class Libevhtp(Project):
+    def __init__(self):
+        super(Libevhtp, self).__init__('libevhtp')
+
+    def branch(self):
+        return 'master'
+
+    @chdir
+    def compile_and_install(self):
+        cmds = [
+            'cmake -DEVHTP_DISABLE_SSL=ON -DEVHTP_BUILD_SHARED=OFF',
+            'make',
+            'sudo make install',
+            'sudo ldconfig',
+        ]
+
+        for cmd in cmds:
+            shell(cmd)
 
 def fetch_and_build():
     libsearpc = Libsearpc()
+    libevhtp = Libevhtp()
     ccnet = CcnetServer()
     seafile = SeafileServer()
 
     libsearpc.clone()
-    libsearpc.compile_and_install()
-
+    libevhtp.clone()
     ccnet.clone()
+
+    libsearpc.compile_and_install()
+    libevhtp.compile_and_install()
     ccnet.compile_and_install()
-
     seafile.compile_and_install()
-
 
 def parse_args():
     ap = argparse.ArgumentParser()
@@ -184,9 +207,9 @@ def main():
     mkdirs(INSTALLDIR)
     os.environ.update(make_build_env())
     args = parse_args()
-    if on_travis() and not args.test_only:
+    if on_github_actions() and not args.test_only:
         fetch_and_build()
-    if on_travis():
+    if on_github_actions():
         dbs = ('sqlite3', 'mysql')
     else:
         dbs = ('sqlite3',)
